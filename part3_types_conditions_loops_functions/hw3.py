@@ -8,7 +8,6 @@ INCORRECT_DATE_MSG = "Invalid date!"
 NOT_EXISTS_CATEGORY = "Category not exists!"
 OP_SUCCESS_MSG = "Added"
 
-
 EXPENSE_CATEGORIES = {
     "Food": ("Supermarket", "Restaurants", "FastFood", "Coffee", "Delivery"),
     "Transport": ("Taxi", "Public transport", "Gas", "Car service"),
@@ -21,30 +20,22 @@ EXPENSE_CATEGORIES = {
     "Other": (),
 }
 
-
 financial_transactions_storage: list[dict[str, Any]] = []
+
+EXPECTED_PARTS_INCOME = 3
+EXPECTED_PARTS_COST_CATEGORIES = 2
+EXPECTED_PARTS_COST_FULL = 4
+EXPECTED_PARTS_STATS = 2
+MONTH_FEBRUARY = 2
 
 
 def is_leap_year(year: int) -> bool:
-    """
-    Для заданного года определяет: високосный (True) или невисокосный (False).
-
-    :param int year: Проверяемый год
-    :return: Значение високосности.
-    :rtype: bool
-    """
-    if year % 400 == 0:
-        return True
-    if year % 100 == 0:
-        return False
-    if year % 4 == 0:
-        return True
-    return False
+    return (year % 4 == 0) and (year % 100 != 0 or year % 400 == 0)
 
 
 def get_days_in_month(month: int, year: int) -> int:
     days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    if month == 2 and is_leap_year(year):
+    if month == MONTH_FEBRUARY and is_leap_year(year):
         return 29
     return days_in_month[month - 1]
 
@@ -56,42 +47,27 @@ def is_valid_date(day: int, month: int, year: int) -> bool:
 
 
 def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
-    """
-    Парсит дату формата DD-MM-YYYY из строки.
-
-    :param str maybe_dt: Проверяемая строка
-    :return: typle формата (день, месяц, год) или None, если дата неправильная.
-    :rtype: tuple[int, int, int] | None
-    """
-    parts = maybe_dt.split('-')
+    parts = maybe_dt.split("-")
     if len(parts) != 3:
         return None
-
     try:
-        day = int(parts[0])
-        month = int(parts[1])
-        year = int(parts[2])
+        day, month, year = map(int, parts)
     except ValueError:
         return None
-
     if is_valid_date(day, month, year):
-        return (day, month, year)
+        return day, month, year
     return None
 
 
 def parse_amount(amount_str: str) -> float | None:
     try:
-        amount_str = amount_str.replace(',', '.')
+        amount_str = amount_str.replace(",", ".")
         return float(amount_str)
     except ValueError:
         return None
 
 
-def validate_date(date_str: str) -> tuple[int, int, int] | None:
-    return extract_date(date_str)
-
-
-def get_common_categories() -> str:
+def get_full_categories_list() -> str:
     categories = []
     for common, targets in EXPENSE_CATEGORIES.items():
         for target in targets:
@@ -100,45 +76,27 @@ def get_common_categories() -> str:
 
 
 def is_valid_category(category_name: str) -> bool:
-    parts = category_name.split('::')
+    parts = category_name.split("::")
     if len(parts) != 2:
         return False
-
     common, target = parts
-    if common not in EXPENSE_CATEGORIES:
-        return False
-
-    if target not in EXPENSE_CATEGORIES[common]:
-        return False
-
-    return True
+    return common in EXPENSE_CATEGORIES and target in EXPENSE_CATEGORIES[common]
 
 
 def income_handler(amount: float, income_date: str) -> str:
-    financial_transactions_storage.append({
-        "type": "income",
-        "amount": amount,
-        "date": income_date
-    })
+    financial_transactions_storage.append({"amount": amount, "date": income_date})
     return OP_SUCCESS_MSG
 
 
 def cost_handler(category_name: str, amount: float, income_date: str) -> str:
-    financial_transactions_storage.append({
-        "type": "cost",
-        "category": category_name,
-        "amount": amount,
-        "date": income_date
-    })
+    financial_transactions_storage.append(
+        {"category": category_name, "amount": amount, "date": income_date}
+    )
     return OP_SUCCESS_MSG
 
 
 def cost_categories_handler() -> str:
-    return get_common_categories()
-
-
-def get_date_key(day: int, month: int, year: int) -> int:
-    return year * 10000 + month * 100 + day
+    return get_full_categories_list()
 
 
 def get_month_key(day: int, month: int, year: int) -> int:
@@ -146,145 +104,153 @@ def get_month_key(day: int, month: int, year: int) -> int:
 
 
 def stats_handler(report_date: str) -> str:
-    date_tuple = extract_date(report_date)
-    if date_tuple is None:
+    parsed = extract_date(report_date)
+    if parsed is None:
         return INCORRECT_DATE_MSG
 
-    report_day, report_month, report_year = date_tuple
-    report_date_key = get_date_key(report_day, report_month, report_year)
-    report_month_key = get_month_key(report_day, report_month, report_year)
+    day, month, year = parsed
 
     total_capital = 0.0
-    monthly_income = 0.0
-    monthly_expenses = 0.0
-    category_expenses = {}
+    month_income = 0.0
+    month_expenses = 0.0
+    expenses_by_category = {}
 
     for transaction in financial_transactions_storage:
-        trans_date = transaction["date"]
-        trans_date_tuple = extract_date(trans_date)
-        if trans_date_tuple is None:
-            continue
-
-        trans_day, trans_month, trans_year = trans_date_tuple
-        trans_date_key = get_date_key(trans_day, trans_month, trans_year)
-
-        if trans_date_key > report_date_key:
-            continue
-
         amount = transaction["amount"]
-        total_capital += amount if transaction["type"] == "income" else -amount
+        t_date = transaction["date"]
+        t_parsed = extract_date(t_date)
+        if t_parsed is None:
+            continue
+        t_day, t_month, t_year = t_parsed
 
-        trans_month_key = get_month_key(trans_day, trans_month, trans_year)
-        if trans_month_key == report_month_key:
-            if transaction["type"] == "income":
-                monthly_income += amount
+        is_before_or_equal = (t_year < year) or (t_year == year and t_month < month) or \
+                             (t_year == year and t_month == month and t_day <= day)
+
+        if is_before_or_equal:
+            total_capital += amount
+
+        if t_year == year and t_month == month:
+            if "category" in transaction:
+                month_expenses += amount
+                cat = transaction["category"]
+                expenses_by_category[cat] = expenses_by_category.get(cat, 0.0) + amount
             else:
-                monthly_expenses += amount
-                category = transaction.get("category", "")
-                category_expenses[category] = category_expenses.get(category, 0) + amount
+                month_income += amount
 
     result = f"Your statistics as of {report_date}:\n"
     result += f"Total capital: {total_capital:.2f} rubles\n"
 
-    monthly_result = monthly_income - monthly_expenses
-
-    if monthly_result >= 0:
-        result += f"This month, the profit amounted to {monthly_result:.2f} rubles.\n"
+    profit_loss = month_income - month_expenses
+    if profit_loss >= 0:
+        result += f"This month, the profit amounted to {profit_loss:.2f} rubles.\n"
     else:
-        result += f"This month, the loss amounted to {abs(monthly_result):.2f} rubles.\n"
+        result += f"This month, the loss amounted to {abs(profit_loss):.2f} rubles.\n"
 
-    result += f"Income: {monthly_income:.2f} rubles\n"
-    result += f"Expenses: {monthly_expenses:.2f} rubles\n"
+    result += f"Income: {month_income:.2f} rubles\n"
+    result += f"Expenses: {month_expenses:.2f} rubles\n"
 
-    if category_expenses:
+    if expenses_by_category:
         result += "\nDetails (category: amount):\n"
-        sorted_categories = sorted(category_expenses.keys())
-        for i, category in enumerate(sorted_categories, 1):
-            amount = category_expenses[category]
-            amount_str = f"{amount:,.2f}".replace('.', ',').replace(',', '.', 1) if '.' in f"{amount:.2f}" else f"{amount:.2f}".replace('.', ',')
-            result += f"{i}. {category}: {amount_str}\n"
+        sorted_categories = sorted(expenses_by_category.keys())
+        for i, cat in enumerate(sorted_categories, 1):
+            amount = expenses_by_category[cat]
+            if amount == int(amount):
+                amount_str = f"{int(amount)}"
+            else:
+                amount_str = f"{amount:.2f}".replace(".", ",")
+            result += f"{i}. {cat}: {amount_str}\n"
     else:
         result += "\nDetails (category: amount):\n"
 
-    return result.rstrip()
+    return result.rstrip("\n")
+
+
+def process_income(parts: list[str]) -> None:
+    if len(parts) != EXPECTED_PARTS_INCOME:
+        print(UNKNOWN_COMMAND_MSG)
+        return
+
+    amount_str = parts[1]
+    date_str = parts[2]
+
+    amount = parse_amount(amount_str)
+    if amount is None or amount <= 0:
+        print(NONPOSITIVE_VALUE_MSG)
+        return
+
+    if extract_date(date_str) is None:
+        print(INCORRECT_DATE_MSG)
+        return
+
+    print(income_handler(amount, date_str))
+
+
+def process_cost(parts: list[str]) -> None:
+    if len(parts) == EXPECTED_PARTS_COST_CATEGORIES and parts[1] == "categories":
+        print(cost_categories_handler())
+        return
+
+    if len(parts) != EXPECTED_PARTS_COST_FULL:
+        print(UNKNOWN_COMMAND_MSG)
+        return
+
+    category = parts[1]
+    amount_str = parts[2]
+    date_str = parts[3]
+
+    if not is_valid_category(category):
+        print(NOT_EXISTS_CATEGORY)
+        print(get_full_categories_list())
+        return
+
+    amount = parse_amount(amount_str)
+    if amount is None or amount <= 0:
+        print(NONPOSITIVE_VALUE_MSG)
+        return
+
+    if extract_date(date_str) is None:
+        print(INCORRECT_DATE_MSG)
+        return
+
+    print(cost_handler(category, amount, date_str))
+
+
+def process_stats(parts: list[str]) -> None:
+    if len(parts) != EXPECTED_PARTS_STATS:
+        print(UNKNOWN_COMMAND_MSG)
+        return
+
+    date_str = parts[1]
+    if extract_date(date_str) is None:
+        print(INCORRECT_DATE_MSG)
+        return
+
+    print(stats_handler(date_str))
 
 
 def main() -> None:
     while True:
         try:
-            user_input = input().strip()
-            if not user_input:
-                continue
-
-            parts = user_input.split()
-            command = parts[0].lower()
-
-            if command == "income":
-                if len(parts) != 3:
-                    print(UNKNOWN_COMMAND_MSG)
-                    continue
-
-                amount_str = parts[1]
-                date_str = parts[2]
-
-                amount = parse_amount(amount_str)
-                if amount is None or amount <= 0:
-                    print(NONPOSITIVE_VALUE_MSG)
-                    continue
-
-                if validate_date(date_str) is None:
-                    print(INCORRECT_DATE_MSG)
-                    continue
-
-                result = income_handler(amount, date_str)
-                print(result)
-
-            elif command == "cost":
-                if len(parts) == 2 and parts[1] == "categories":
-                    result = cost_categories_handler()
-                    print(result)
-                elif len(parts) == 4:
-                    category_name = parts[1]
-                    amount_str = parts[2]
-                    date_str = parts[3]
-
-                    if not is_valid_category(category_name):
-                        print(NOT_EXISTS_CATEGORY)
-                        print(get_common_categories())
-                        continue
-
-                    amount = parse_amount(amount_str)
-                    if amount is None or amount <= 0:
-                        print(NONPOSITIVE_VALUE_MSG)
-                        continue
-
-                    if validate_date(date_str) is None:
-                        print(INCORRECT_DATE_MSG)
-                        continue
-
-                    result = cost_handler(category_name, amount, date_str)
-                    print(result)
-                else:
-                    print(UNKNOWN_COMMAND_MSG)
-
-            elif command == "stats":
-                if len(parts) != 2:
-                    print(UNKNOWN_COMMAND_MSG)
-                    continue
-
-                date_str = parts[1]
-                if validate_date(date_str) is None:
-                    print(INCORRECT_DATE_MSG)
-                    continue
-
-                result = stats_handler(date_str)
-                print(result)
-
-            else:
-                print(UNKNOWN_COMMAND_MSG)
-
+            line = input().strip()
         except EOFError:
             break
+
+        if not line:
+            continue
+
+        parts = line.split()
+        command = parts[0]
+
+        if command == "income":
+            process_income(parts)
+        elif command == "cost":
+            process_cost(parts)
+        elif command == "stats":
+            process_stats(parts)
+        elif command == "exit":
+            break
+        else:
+            print(UNKNOWN_COMMAND_MSG)
 
 
 if __name__ == "__main__":
