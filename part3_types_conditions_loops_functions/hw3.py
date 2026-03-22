@@ -73,8 +73,7 @@ def parse_amount(amount_str: str) -> float | None:
 def get_full_categories_list() -> str:
     categories = []
     for common, targets in EXPENSE_CATEGORIES.items():
-        for target in targets:
-            categories.append(f"{common}::{target}")
+        categories.extend(f"{common}::{target}" for target in targets)
     return "\n".join(categories)
 
 
@@ -87,40 +86,23 @@ def is_valid_category(category_name: str) -> bool:
 
 
 def income_handler(amount: float, income_date: str) -> str:
+    if amount <= 0:
+        return NONPOSITIVE_VALUE_MSG
     date_tuple = extract_date(income_date)
     if date_tuple is None:
-        financial_transactions_storage.append(
-            {"amount": amount, "date": None}
-        )
         return INCORRECT_DATE_MSG
-    if amount <= 0:
-        financial_transactions_storage.append(
-            {"amount": amount, "date": date_tuple}
-        )
-        return NONPOSITIVE_VALUE_MSG
-    financial_transactions_storage.append(
-        {"amount": amount, "date": date_tuple}
-    )
+    financial_transactions_storage.append({"amount": amount, "date": date_tuple})
     return OP_SUCCESS_MSG
 
 
 def cost_handler(category_name: str, amount: float, income_date: str) -> str:
+    if not is_valid_category(category_name):
+        return NOT_EXISTS_CATEGORY
+    if amount <= 0:
+        return NONPOSITIVE_VALUE_MSG
     date_tuple = extract_date(income_date)
     if date_tuple is None:
-        financial_transactions_storage.append(
-            {"category": category_name, "amount": amount, "date": None}
-        )
         return INCORRECT_DATE_MSG
-    if amount <= 0:
-        financial_transactions_storage.append(
-            {"category": category_name, "amount": amount, "date": date_tuple}
-        )
-        return NONPOSITIVE_VALUE_MSG
-    if not is_valid_category(category_name):
-        financial_transactions_storage.append(
-            {"category": category_name, "amount": amount, "date": date_tuple}
-        )
-        return NOT_EXISTS_CATEGORY
     financial_transactions_storage.append(
         {"category": category_name, "amount": amount, "date": date_tuple}
     )
@@ -149,7 +131,7 @@ def stats_handler(report_date: str) -> str:
 
     for transaction in financial_transactions_storage:
         amount = transaction["amount"]
-        t_date = transaction.get("date")
+        t_date = transaction["date"]
         if t_date is None:
             continue
         t_day, t_month, t_year = t_date
