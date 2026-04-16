@@ -65,9 +65,7 @@ class CircuitBreaker:
 
         return wrapper
 
-    def _execute(
-        self, func: CallableWithMeta[P, R_co], *args: P.args, **kwargs: P.kwargs
-    ) -> R_co:
+    def _execute(self, func: CallableWithMeta[P, R_co], *args: P.args, **kwargs: P.kwargs) -> R_co:
         try:
             result = func(*args, **kwargs)
         except self.triggers_on as exc:
