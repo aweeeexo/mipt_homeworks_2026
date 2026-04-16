@@ -14,84 +14,81 @@ R_co = TypeVar("R_co", covariant=True)
 
 
 class CallableWithMeta(Protocol[P, R_co]):
-  __name__: str
-  __module__: str
+    __name__: str
+    __module__: str
 
-  def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R_co: ...
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R_co: ...
 
 
 class BreakerError(Exception):
-  def __init__(self, msg: str, func: CallableWithMeta[Any, Any],
-      block_time: datetime):
-    super().__init__(msg)
-    self.func_name = f"{func.__module__}.{func.__name__}"
-    self.block_time = block_time
+    def __init__(self, msg: str, func: CallableWithMeta[Any, Any], block_time: datetime):
+        super().__init__(msg)
+        self.func_name = f"{func.__module__}.{func.__name__}"
+        self.block_time = block_time
 
 
 def _is_positive_integer(var: Any) -> bool:
-  return isinstance(var, int) and var > 0
+    return isinstance(var, int) and var > 0
 
 
 class CircuitBreaker:
-  def __init__(
-      self,
-      critical_count: int = 5,
-      time_to_recover: int = 30,
-      triggers_on: type[Exception] = Exception,
-  ):
-    exceptions = []
-    if not _is_positive_integer(critical_count):
-      exceptions.append(ValueError(INVALID_CRITICAL_COUNT))
-    if not _is_positive_integer(time_to_recover):
-      exceptions.append(ValueError(INVALID_RECOVERY_TIME))
-    if exceptions:
-      raise ExceptionGroup(VALIDATIONS_FAILED, exceptions)
+    def __init__(
+        self,
+        critical_count: int = 5,
+        time_to_recover: int = 30,
+        triggers_on: type[Exception] = Exception,
+    ):
+        exceptions = []
+        if not _is_positive_integer(critical_count):
+            exceptions.append(ValueError(INVALID_CRITICAL_COUNT))
+        if not _is_positive_integer(time_to_recover):
+            exceptions.append(ValueError(INVALID_RECOVERY_TIME))
+        if exceptions:
+            raise ExceptionGroup(VALIDATIONS_FAILED, exceptions)
 
-    self.critical_count = critical_count
-    self.time_to_recover = time_to_recover
-    self.triggers_on = triggers_on
-    self.counter = 0
-    self.blocking_time: datetime | None = None
-
-  def __call__(self, func: CallableWithMeta[P, R_co]) -> CallableWithMeta[
-    P, R_co]:
-    @wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
-      if self.blocking_time is not None:
-        seconds_passed = (
-              datetime.now(UTC) - self.blocking_time).total_seconds()
-        if seconds_passed < self.time_to_recover:
-          raise BreakerError(TOO_MUCH, func, self.blocking_time)
-        self.blocking_time = None
-
-      return self._execute(func, *args, **kwargs)
-
-    return wrapper
-
-  def _execute(self, func: CallableWithMeta[P, R_co], *args: P.args,
-      **kwargs: P.kwargs) -> R_co:
-    try:
-      result = func(*args, **kwargs)
-    except self.triggers_on as exc:
-      self.counter += 1
-      if self.counter >= self.critical_count:
+        self.critical_count = critical_count
+        self.time_to_recover = time_to_recover
+        self.triggers_on = triggers_on
         self.counter = 0
-        self.blocking_time = datetime.now(UTC)
-        raise BreakerError(TOO_MUCH, func, self.blocking_time) from exc
-      raise
-    else:
-      self.counter = 0
-      return result
+        self.blocking_time: datetime | None = None
+
+    def __call__(self, func: CallableWithMeta[P, R_co]) -> CallableWithMeta[P, R_co]:
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
+            if self.blocking_time is not None:
+                seconds_passed = (datetime.now(UTC) - self.blocking_time).total_seconds()
+                if seconds_passed < self.time_to_recover:
+                    raise BreakerError(TOO_MUCH, func, self.blocking_time)
+                self.blocking_time = None
+
+            return self._execute(func, *args, **kwargs)
+
+        return wrapper
+
+    def _execute(
+        self, func: CallableWithMeta[P, R_co], *args: P.args, **kwargs: P.kwargs
+    ) -> R_co:
+        try:
+            result = func(*args, **kwargs)
+        except self.triggers_on as exc:
+            self.counter += 1
+            if self.counter >= self.critical_count:
+                self.counter = 0
+                self.blocking_time = datetime.now(UTC)
+                raise BreakerError(TOO_MUCH, func, self.blocking_time) from exc
+            raise
+        else:
+            self.counter = 0
+            return result
 
 
 circuit_breaker = CircuitBreaker(5, 30, Exception)
 
 
 def get_comments(post_id: int) -> Any:
-  response = urlopen(
-    f"https://jsonplaceholder.typicode.com/comments?postId={post_id}")
-  return json.loads(response.read())
+    response = urlopen(f"https://jsonplaceholder.typicode.com/comments?postId={post_id}")
+    return json.loads(response.read())
 
 
 if __name__ == "__main__":
-  comments = get_comments(1)
+    comments = get_comments(1)
