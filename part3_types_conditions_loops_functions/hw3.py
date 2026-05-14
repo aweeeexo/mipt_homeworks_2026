@@ -32,7 +32,18 @@ COST_CATEGORIES_ARGS = 2
 STATS_ARGS = 2
 
 DAYS_IN_MONTH = [
-    31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+    31,
+    28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
 ]
 
 EXPENSE_CATEGORIES = {
@@ -153,7 +164,8 @@ def _transaction_date_le(transaction: Transaction, target_date: tuple[int, int, 
 
 def _filter_transactions_until(date_tuple: tuple[int, int, int]) -> list[Transaction]:
     return [
-        transaction for transaction in financial_transactions_storage
+        transaction
+        for transaction in financial_transactions_storage
         if transaction and _transaction_date_le(transaction, date_tuple)
     ]
 
@@ -222,8 +234,7 @@ def _format_stats_lines(
     ]
 
     lines.extend(
-        f"{index}. {category}: {amount:.2f}"
-        for index, (category, amount) in enumerate(category_expenses_month.items())
+        f"{index}. {category}: {amount:.2f}" for index, (category, amount) in enumerate(category_expenses_month.items())
     )
     return lines
 
