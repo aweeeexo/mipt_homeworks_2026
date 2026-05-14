@@ -73,7 +73,6 @@ def _extract_date(maybe_date: str) -> tuple[int, int, int] | None:
 
     max_days = FEB_LEAP_DAYS if (month == FEBRUARY and _is_leap_year(year)) else DAYS_IN_MONTH[month - 1]
     
-    # Возвращаем (день, месяц, год), как требуют тесты автогрейдера
     return (day, month, year) if 1 <= day <= max_days else None
 
 
@@ -148,7 +147,6 @@ def _transaction_date_le(transaction: Transaction, target_date: tuple[int, int, 
     if isinstance(transaction_date, tuple):
         t_day, t_month, t_year = transaction_date
         target_day, target_month, target_year = target_date
-        # Локально переворачиваем для правильного сравнения кортежей
         return (t_year, t_month, t_day) <= (target_year, target_month, target_day)
     return False
 
