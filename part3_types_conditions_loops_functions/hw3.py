@@ -74,10 +74,10 @@ def _extract_date(maybe_date: str) -> DateTuple | None:
     if not (1 <= month <= MONTH_MAX):
         return None
 
-    if month == FEBRUARY and _is_leap_year(year):
-        max_days = FEB_LEAP_DAYS
-    else:
-        max_days = DAYS_IN_MONTH[month - 1]
+    max_days = DAYS_IN_MONTH[month - 1]
+    if month == FEBRUARY:
+        if _is_leap_year(year):
+            max_days = FEB_LEAP_DAYS
 
     if 1 <= day <= max_days:
         return (day, month, year)
@@ -151,8 +151,8 @@ def cost_handler(category_name: str, amount: float, income_date: str) -> str:
 def cost_categories_handler() -> str:
     lines = []
     for common, targets in EXPENSE_CATEGORIES.items():
-        for target in targets:
-            lines.append(f"{common}::{target}")
+        category_lines = [f"{common}::{target}" for target in targets]
+        lines.extend(category_lines)
     return "\n".join(lines)
 
 
@@ -170,11 +170,11 @@ def _transaction_date_le(transaction: Transaction, target_date: DateTuple) -> bo
 
 
 def _filter_transactions_until(date_tuple: DateTuple) -> list[Transaction]:
-    result = []
-    for transaction in financial_transactions_storage:
-        if transaction and _transaction_date_le(transaction, date_tuple):
-            result.append(transaction)
-    return result
+    return [
+        transaction
+        for transaction in financial_transactions_storage
+        if transaction and _transaction_date_le(transaction, date_tuple)
+    ]
 
 
 def _same_month_year(transaction: Transaction, target_year: int, target_month: int) -> bool:
@@ -199,10 +199,9 @@ def _calculate_totals(transactions: list[Transaction]) -> tuple[float, float]:
     total_income = float(0)
     for transaction in transactions:
         val = transaction.get(KEY_AMOUNT, 0)
+        amount = float(0)
         if isinstance(val, (int, float, str)):
             amount = float(val)
-        else:
-            amount = float(0)
 
         if _is_income(transaction):
             total_income += amount
@@ -221,10 +220,9 @@ def _aggregate_costs(transactions: list[Transaction], target_year: int, target_m
 
         category = str(transaction[KEY_CATEGORY])
         val = transaction[KEY_AMOUNT]
+        amount = float(0)
         if isinstance(val, (int, float, str)):
             amount = float(val)
-        else:
-            amount = float(0)
 
         current = result.get(category, float(0))
         result[category] = current + amount
@@ -241,10 +239,9 @@ def _format_stats_lines(
     category_expenses_month: CostDict,
 ) -> list[str]:
     capital = total_income_all - total_expense_all
+    profit_word = "loss"
     if capital >= 0:
         profit_word = "profit"
-    else:
-        profit_word = "loss"
 
     lines = [
         f"Your statistics as of {report_date}:",
