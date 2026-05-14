@@ -72,7 +72,7 @@ def _extract_date(maybe_date: str) -> tuple[int, int, int] | None:
         return None
 
     max_days = FEB_LEAP_DAYS if (month == FEBRUARY and _is_leap_year(year)) else DAYS_IN_MONTH[month - 1]
-    
+
     return (day, month, year) if 1 <= day <= max_days else None
 
 
@@ -246,7 +246,7 @@ def stats_handler(report_date: str) -> str:
     relevant_transactions = _filter_transactions_until(date_tuple)
     total_expense_all, total_income_all = _calculate_totals(relevant_transactions)
 
-    target_day, target_month, target_year = date_tuple
+    _, target_month, target_year = date_tuple
     category_expenses_month = _aggregate_costs(relevant_transactions, target_year, target_month)
 
     return _format_stats(report_date, total_expense_all, total_income_all, category_expenses_month)
