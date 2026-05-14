@@ -31,7 +31,9 @@ COST_ARGS = 4
 COST_CATEGORIES_ARGS = 2
 STATS_ARGS = 2
 
-DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+DAYS_IN_MONTH = [
+    31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+]
 
 EXPENSE_CATEGORIES = {
     "Food": ("Supermarket", "Restaurants", "FastFood", "Coffee", "Delivery"),
@@ -60,7 +62,7 @@ def _extract_date(maybe_date: str) -> tuple[int, int, int] | None:
     parts = maybe_date.split("-")
     if len(parts) != DATE_PARTS:
         return None
-
+        
     for part in parts:
         if not part.isdigit():
             return None
@@ -145,11 +147,7 @@ def cost_handler(category_name: str, amount: float, income_date: str) -> str:
 
 
 def cost_categories_handler() -> str:
-    lines = [
-        f"{common}::{target}"
-        for common, targets in EXPENSE_CATEGORIES.items()
-        for target in targets
-    ]
+    lines = [f"{common}::{target}" for common, targets in EXPENSE_CATEGORIES.items() for target in targets]
     return "\n".join(lines)
 
 
@@ -164,8 +162,7 @@ def _transaction_date_le(transaction: Transaction, target_date: tuple[int, int, 
 
 def _filter_transactions_until(date_tuple: tuple[int, int, int]) -> list[Transaction]:
     return [
-        transaction
-        for transaction in financial_transactions_storage
+        transaction for transaction in financial_transactions_storage
         if transaction and _transaction_date_le(transaction, date_tuple)
     ]
 
@@ -215,7 +212,7 @@ def _aggregate_costs(transactions: list[Transaction], target_year: int, target_m
             amount = float(val)
         else:
             amount = 0
-
+            
         current = result.get(category, 0)
         result[category] = current + amount
 
@@ -243,7 +240,7 @@ def _format_stats_lines(
 
     for index, (category, amount) in enumerate(category_expenses_month.items()):
         lines.append(f"{index}. {category}: {amount:.2f}")
-
+        
     return lines
 
 
@@ -253,12 +250,7 @@ def _format_stats(
     total_income_all: float,
     category_expenses_month: CostDict,
 ) -> str:
-    stats_lines = _format_stats_lines(
-        report_date,
-        total_expense_all,
-        total_income_all,
-        category_expenses_month,
-    )
+    stats_lines = _format_stats_lines(report_date, total_expense_all, total_income_all, category_expenses_month)
     return "\n".join([*stats_lines, ""])
 
 
