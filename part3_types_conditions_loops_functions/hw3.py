@@ -75,9 +75,8 @@ def _extract_date(maybe_date: str) -> DateTuple | None:
         return None
 
     max_days = DAYS_IN_MONTH[month - 1]
-    if month == FEBRUARY:
-        if _is_leap_year(year):
-            max_days = FEB_LEAP_DAYS
+    if month == FEBRUARY and _is_leap_year(year):
+        max_days = FEB_LEAP_DAYS
 
     if 1 <= day <= max_days:
         return (day, month, year)
