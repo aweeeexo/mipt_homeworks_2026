@@ -1,0 +1,7 @@
+api_key: "AQVN2s6O1TFKfeU8qSrCB78i5GzjKKr22lLJLWha"
+api_host: "https://llm.api.cloud.yandex.net/v1"
+folder_id: "b1gmpsj3dpg0tu302jqp"
+limit_message: 20
+limit_chars: 4000
+temperature: 0.5
+system_prompt: "Ты умный ИИ-помощник. Отвечай кратко и по делу."
